@@ -47,7 +47,13 @@ public class LoginCheckFilter implements Filter {
                 "common/**",
             //放行验证码的发送页面和验证码的发送请求
                 "/user/sendMsg", //移动端发送短信地址
-                "/user/login"    //移动端登录
+                "/user/login",    //移动端登录
+
+                //放行api接口文档需要的页面资源
+                "/doc.html",
+                "/webjars/**",
+                "/swagger-resources",
+                "/v2/api-docs"
 
         };
 
