@@ -8,6 +8,7 @@ import com.yjm.utils.MailUtils;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,7 @@ import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author 游锦民
@@ -31,6 +33,9 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    //注入RedisTemplate对象
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
 
     /**
      * 发送邮箱验证码
@@ -52,7 +57,10 @@ public class UserController {
           //  MailUtils.sendMail(phone, code);
 
             //将验证码保存到Session中,验证没有保存到session中,导致验证码错误
-            session.setAttribute(phone, code);
+           // session.setAttribute(phone, code);
+
+            //将验证码保存到redis中并设置过期时间
+            redisTemplate.opsForValue().set(phone, code,5, TimeUnit.MINUTES);
 
             // 启动多线程来限定验证码的时效性
             //lambda表达式实现多线程
@@ -88,10 +96,13 @@ public class UserController {
         String code = map.get("code").toString();
 
         //获取session中的验证码,验证码的key为手机号
-        String codeInSession = (String) session.getAttribute(phone);
+       // String codeInSession = (String) session.getAttribute(phone);
+
+        //获取redis中的验证码
+        String codeInRedis = redisTemplate.opsForValue().get(phone);
 
         //看看接收到用户输入的验证码是否和session中的验证码相同
-        if (code != null && code.equals(codeInSession)) {
+        if (code != null && code.equals(codeInRedis)) {
             //根据手机号查询用户
             LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
 
