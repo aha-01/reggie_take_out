@@ -56,7 +56,7 @@ public class DishController {
 
 
         ///新增菜品之后,将缓存到redis中的菜品分类信息删除,以便下次查询时重新缓存
-        redisTemplate.delete("dish_"+dishDto.getCategoryId()+"_1");
+        redisTemplate.delete("dish_" + dishDto.getCategoryId() + "_1");
 
         //把所有的菜品分类信息删除
 //          Set keys = redisTemplate.keys("dish_*");
@@ -166,7 +166,7 @@ public class DishController {
         dishService.updateWithFlavor(dishDto);
 
         //修改菜品之后把缓存到redis中的菜品分类信息删除,以便下次查询时重新缓存
-        redisTemplate.delete("dish_"+dishDto.getCategoryId()+"_1");
+        redisTemplate.delete("dish_" + dishDto.getCategoryId() + "_1");
 
         //把所有的菜品分类信息删除
 //        Set keys = redisTemplate.keys("dish_*");
