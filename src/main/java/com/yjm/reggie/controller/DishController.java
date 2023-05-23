@@ -253,7 +253,7 @@ public class DishController {
             //将处理后的dishDto对象收集到集合中
         }).collect(Collectors.toList());
 
-        //将查询结果存入redis中
+        //将查询结果存入redis中,设置过期时间为60分钟
         redisTemplate.opsForValue().set(key, list, 60, TimeUnit.MINUTES);
 
         //返回查询结果
