@@ -13,9 +13,12 @@ import com.yjm.reggie.service.DishService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
@@ -36,6 +39,10 @@ public class DishController {
     @Autowired
     private CategoryService categoryService;
 
+    //注入RedisTemplate对象,该对象的作用是将数据保存到redis中
+    @Autowired
+    private RedisTemplate redisTemplate;
+
     /**
      * 新增菜品
      *
@@ -46,6 +53,15 @@ public class DishController {
     public R<String> save(@RequestBody DishDto dishDto) {
         log.info(dishDto.toString());
         dishService.saveWithFlavor(dishDto);
+
+
+        ///新增菜品之后,将缓存到redis中的菜品分类信息删除,以便下次查询时重新缓存
+        redisTemplate.delete("dish_"+dishDto.getCategoryId()+"_1");
+
+        //把所有的菜品分类信息删除
+//          Set keys = redisTemplate.keys("dish_*");
+//         redisTemplate.delete(keys);
+
         return R.success("新增菜品成功!");
     }
 
@@ -122,12 +138,13 @@ public class DishController {
 
     /**
      * 根据id查询菜品信息和对应的口味信息
+     *
      * @param id
      * @return
      */
     @GetMapping("/{id}") //添加{}因为是路径变量为了接收不同的id,路径变量是在URL路径中的一部分，用于动态地接收参数值。
     //使用DishDto参数是因为其中继承了Dish并且包含了口味DishFlavor这个属性
-    public R<DishDto> get(@PathVariable Long id){ //@PathVariable Long id 表示将 URL 路径中的 id 变量提取出来，并将其作为 Long 类型的参数传递给该方法。
+    public R<DishDto> get(@PathVariable Long id) { //@PathVariable Long id 表示将 URL 路径中的 id 变量提取出来，并将其作为 Long 类型的参数传递给该方法。
 
         //调用查询方法
         DishDto dishDto = dishService.getByIdWithFlavor(id);
@@ -147,6 +164,13 @@ public class DishController {
 
 
         dishService.updateWithFlavor(dishDto);
+
+        //修改菜品之后把缓存到redis中的菜品分类信息删除,以便下次查询时重新缓存
+        redisTemplate.delete("dish_"+dishDto.getCategoryId()+"_1");
+
+        //把所有的菜品分类信息删除
+//        Set keys = redisTemplate.keys("dish_*");
+//        redisTemplate.delete(keys);
 
         return R.success("修改菜品成功!");
     }
@@ -176,31 +200,46 @@ public class DishController {
     }*/
 
     /**
-     *  根据条件查询对应的菜品数据,并显示菜品口味
+     * 根据条件查询对应的菜品数据,并显示菜品口味
+     *
      * @param dish
      * @return
      */
     @GetMapping("/list")
-    public R<List<DishDto>> list(Dish dish){
+    public R<List<DishDto>> list(Dish dish) {
+        //思路
+        //注意:缓存的菜品并不是整个缓存,而是根据菜品分类id和状态查询的缓存
+        //查询redis中的菜品分类列表
+        //如果没有再查询数据库,并将查询结果存入redis中
+
+        List<DishDto> list = null;
+        //动态构造key,根据菜品分类id和状态查询
+        String key = "dish_" + dish.getCategoryId() + "_" + dish.getStatus();
+
+        //判断redis中是否存在key
+        if (redisTemplate.hasKey(key)) {
+            //从redis中获取数据
+            list = (List<DishDto>) redisTemplate.opsForValue().get(key);
+            return R.success(list);
+        }
+
+
         //构造查询条件.使用lambada表达式
         LambdaQueryWrapper<Dish> queryWrapper = new LambdaQueryWrapper<>();
 
-        queryWrapper.eq(dish.getCategoryId()!=null,Dish::getCategoryId,dish.getCategoryId());
-
-        //条件查询,查询状态为1(起售状态)
-        queryWrapper.eq(Dish::getStatus,1);
-
-
-        queryWrapper.orderByAsc(Dish::getSort).orderByDesc(Dish::getUpdateTime);
-
+        //添加过滤条件,根据菜品分类id查询,如果菜品分类id不为空,则添加过滤条件,查询状态为1(起售状态)
+        queryWrapper.eq(dish.getCategoryId() != null, Dish::getCategoryId, dish.getCategoryId())
+                .eq(Dish::getStatus, 1)
+                .orderByAsc(Dish::getSort).orderByDesc(Dish::getUpdateTime);
+        //执行查询
         List<Dish> dishes = dishService.list(queryWrapper);
 
         //使用集合stream流的方式遍历dishes集合,将每个菜品对象转换为DishDto对象
-        List<DishDto> list = dishes.stream().map((item) -> {
+        list = dishes.stream().map((item) -> {
             //创建DishDto对象
             DishDto dishDto = new DishDto();
             //将菜品对象的属性拷贝到DishDto对象中
-            BeanUtils.copyProperties(item,dishDto);
+            BeanUtils.copyProperties(item, dishDto);
 
             //根据菜品id查询对应的口味列表
             List<DishFlavor> dishFlavorList = dishFlavorService.list(new LambdaQueryWrapper<DishFlavor>().eq(DishFlavor::getDishId, item.getId()));
@@ -214,7 +253,10 @@ public class DishController {
             //将处理后的dishDto对象收集到集合中
         }).collect(Collectors.toList());
 
+        //将查询结果存入redis中
+        redisTemplate.opsForValue().set(key, list, 60, TimeUnit.MINUTES);
 
+        //返回查询结果
         return R.success(list);
 
     }

@@ -67,7 +67,7 @@ public class UserController {
             new Thread(() -> {
                 try {
                     // 验证码的有效时长
-                    Thread.sleep(600000L);
+                    Thread.sleep(500000L);
                     // 更换新验证码
                     session.setAttribute(phone, MailUtils.achieveCode());
                 } catch (InterruptedException e) {
@@ -123,6 +123,9 @@ public class UserController {
 
             //将用户id保存到session中
             session.setAttribute("user", user.getId());
+
+            //登录成功之后删除redis中的验证码
+            redisTemplate.delete(phone);
 
             //返回用户信息
             return R.success(user);
