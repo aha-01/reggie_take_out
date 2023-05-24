@@ -13,6 +13,8 @@ import com.yjm.reggie.service.impl.SetmealServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -46,7 +48,7 @@ public class SetmealController {
      * @return
      */
     @GetMapping("/list")
-    //参数使用setmeal对象,因为请求路径上有id和status两个参数,而这个对象中有这两个属性
+    @Cacheable(value = "setmealCache",key = "#setmeal.categoryId + '_' + #setmeal.status")
     public R<List<Setmeal>> list(Setmeal setmeal){
         LambdaQueryWrapper<Setmeal> wrapper = new LambdaQueryWrapper<Setmeal>()
                 //根据菜品id进行查询,不然商务和儿童套餐都会被查询出来
@@ -68,6 +70,7 @@ public class SetmealController {
      * @return
      */
     @PostMapping
+    @CacheEvict(value = "setmealCache",allEntries = true)//当新增套餐的时候,清空缓存
     public R<String> save(@RequestBody SetmealDto setmealDto) {
         log.info("套餐信息: {}", setmealDto);
 
@@ -144,7 +147,7 @@ public class SetmealController {
      * @return
      */
     @DeleteMapping
-
+    @CacheEvict(value = "setmealCache",allEntries = true)
     public R<String> delete(@RequestParam List<Long> ids){ //@RequestParam表示将请求中名为ids参数的值绑定到方法的ids参数上
         //使用@RequestParam注解，可以获取DELETE请求中的参数值，并将其传递给方法进行处理
         log.info("ids:{}",ids);

@@ -18,6 +18,13 @@
         <java.version>1.8</java.version>
     </properties>
     <dependencies>
+
+<!--        导入springcache的坐标-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+
 <!--        导入的坐标是springboot的redis-->
         <dependency>
             <groupId>org.springframework.boot</groupId>

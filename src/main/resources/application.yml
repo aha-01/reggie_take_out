@@ -22,10 +22,12 @@ spring:
             enable: true
   redis:
   host: localhost
-
   port: 6379
   password:
   database: 0
+  cache:
+    redis:
+      time-to-live: 1800000 # 设置缓存有效时间
 
 
 mybatis-plus:
