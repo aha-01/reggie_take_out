@@ -50,7 +50,7 @@ spring:
 
   # 配置redis
   redis:
-    host: localhost
+    host: 127.0.0.1
     port: 6379
     password:
     database: 0
@@ -70,5 +70,5 @@ mybatis-plus:
       id-type: ASSIGN_ID
 #
 reggie:
-  path: D:\黑马程序员资料\瑞吉外卖-资料\1 瑞吉外卖项目\1 瑞吉外卖项目\资料\图片资源\
+  path: /usr/local/img
 
